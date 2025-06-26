@@ -44,6 +44,11 @@ android {
         compose = true
         viewBinding = true
     }
+    sourceSets {
+        getByName("main") {
+            assets.srcDirs("src/main/assets")
+        }
+    }
     room {
         schemaDirectory("$projectDir/schemas")
     }
@@ -91,10 +96,12 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     // hilt
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     // navigation
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
 
@@ -106,12 +113,12 @@ dependencies {
     implementation(libs.androidx.recyclerview)
 
     // kaspresso
-    androidTestImplementation("com.kaspersky.android-components:kaspresso:1.5.1")
-    androidTestUtil("androidx.test:orchestrator:1.4.2")
+    androidTestImplementation(libs.kaspresso)
+    androidTestUtil(libs.androidx.orchestrator)
 
     // test
-    testImplementation("org.mockito:mockito-core:5.18.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0")
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.junit.v4132)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
