@@ -53,50 +53,18 @@ class CurrencyViewModel @Inject constructor(
         startRatesUpdates()
     }
 
-    private fun startRatesUpdates() {
-        ratesJob?.cancel()
-        ratesJob = viewModelScope.launch {
-            while (isActive) {
-                val state = _uiState.value
-                val rates = try {
-                    currencyRepository.getRates(state.selectedCurrency, state.amount)
-                } catch (_: Exception) {
-                    emptyList()
-                }
-
-                val filteredRates = if (state.isInputMode) {
-                    filterRates(rates, state.accounts, state.amount)
-                } else {
-                    rates
-                }
-
-                _uiState.update {
-                    it.copy(rates = rates, filteredRates = filteredRates)
-                }
-
-                delay(1000L)
-            }
-        }
-    }
-
-    private fun filterRates(
-        rates: List<RateDto>,
-        accounts: List<AccountDbo>,
-        amountToBuy: Double
-    ): List<RateDto> {
-        val allowedCurrencies = accounts.filter { account ->
-            val rate = rates.find { it.currency == account.code }?.value ?: 0.0
-            val requiredAmount = amountToBuy * rate
-            account.amount >= requiredAmount
-        }.map { it.code }.toSet()
-
-        return rates.filter { allowedCurrencies.contains(it.currency) }
-    }
-
-
     fun onCurrencyClicked(currency: String) {
         val state = _uiState.value
         when {
+            state.isInputMode -> {
+                _uiState.update {
+                    it.copy(
+                        isConfirmed = true,
+                        targetCurrencyForExchange = currency
+                    )
+                }
+            }
+
             state.selectedCurrency != currency -> {
                 _uiState.update {
                     it.copy(
@@ -119,7 +87,6 @@ class CurrencyViewModel @Inject constructor(
                     )
                 }
             }
-
         }
     }
 
@@ -130,7 +97,14 @@ class CurrencyViewModel @Inject constructor(
     }
 
     fun onResetAmount() {
-        _uiState.update { it.copy(amount = 1.0, isInputMode = false) }
+        _uiState.update {
+            it.copy(
+                amount = 1.0,
+                isInputMode = false,
+                isEditable = false,
+                isConfirmed = false
+            )
+        }
     }
 
     fun getFilteredRates(): List<RateDto> {
@@ -169,6 +143,46 @@ class CurrencyViewModel @Inject constructor(
                 targetCurrencyForExchange = null
             )
         }
+    }
+
+    private fun startRatesUpdates() {
+        ratesJob?.cancel()
+        ratesJob = viewModelScope.launch {
+            while (isActive) {
+                val state = _uiState.value
+                val rates = try {
+                    currencyRepository.getRates(state.selectedCurrency, state.amount)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+
+                val filteredRates = if (state.isInputMode) {
+                    filterRates(rates, state.accounts, state.amount)
+                } else {
+                    rates
+                }
+
+                _uiState.update {
+                    it.copy(rates = rates, filteredRates = filteredRates)
+                }
+
+                delay(1000L)
+            }
+        }
+    }
+
+    private fun filterRates(
+        rates: List<RateDto>,
+        accounts: List<AccountDbo>,
+        amountToBuy: Double
+    ): List<RateDto> {
+        val allowedCurrencies = accounts.filter { account ->
+            val rate = rates.find { it.currency == account.code }?.value ?: 0.0
+            val requiredAmount = amountToBuy * rate
+            account.amount >= requiredAmount
+        }.map { it.code }.toSet()
+
+        return rates.filter { allowedCurrencies.contains(it.currency) }
     }
 
 }

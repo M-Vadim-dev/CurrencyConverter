@@ -33,8 +33,8 @@ fun AppNavGraph(navController: NavHostController) {
             }
         ) {
             CurrencyScreen(
-                onNavigateToExchange = { fromCurrency ->
-                    navController.navigate(NavRoutes.Exchange.createRoute(fromCurrency))
+                onNavigateToExchange = { fromCurrency, toCurrency ->
+                    navController.navigate(NavRoutes.Exchange.createRoute(fromCurrency, toCurrency))
                 }
             )
         }
@@ -42,6 +42,11 @@ fun AppNavGraph(navController: NavHostController) {
             route = NavRoutes.Exchange.route,
             arguments = listOf(
                 navArgument("fromCurrency") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                    nullable = true
+                },
+                navArgument("toCurrency") {
                     type = NavType.StringType
                     defaultValue = ""
                     nullable = true

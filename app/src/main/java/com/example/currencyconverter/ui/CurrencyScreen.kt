@@ -54,7 +54,7 @@ import com.example.currencyconverter.utils.formatTwoDecimalLocalized
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CurrencyScreen(
-    onNavigateToExchange: (String) -> Unit,
+    onNavigateToExchange: (fromCurrency: String, toCurrency: String) -> Unit,
     viewModel: CurrencyViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -66,25 +66,23 @@ fun CurrencyScreen(
         if (index >= 0) listState.animateScrollToItem(index)
     }
 
-    LaunchedEffect(state.isConfirmed, state.targetCurrencyForExchange) {
-        if (state.isConfirmed && state.targetCurrencyForExchange != null) {
-            val fromCurrency = state.targetCurrencyForExchange
-            onNavigateToExchange(fromCurrency.toString())
-
-            viewModel.setInputMode(false)
-            viewModel.clearConfirmation()
+    LaunchedEffect(key1 = state.isConfirmed) {
+        if (state.isConfirmed) {
+            state.targetCurrencyForExchange?.let { targetCurrency ->
+                onNavigateToExchange(state.selectedCurrency, targetCurrency)
+                viewModel.setInputMode(false)
+                viewModel.clearConfirmation()
+            }
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-
             .systemBarsPadding()
     ) {
         LazyColumn(state = listState) {
             items(state.filteredRates, key = { it.currency }) { rate ->
-
                 val isEditableThisItem =
                     state.isInputMode && rate.currency == state.selectedCurrency
 
@@ -95,16 +93,10 @@ fun CurrencyScreen(
                     isEditable = isEditableThisItem,
                     amount = state.amount,
                     balance = state.balanceMap[rate.currency] ?: 0.0,
-                    onAmountChange = { newAmount ->
-                        viewModel.onAmountChange(newAmount)
-                    },
+                    onAmountChange = { newAmount -> viewModel.onAmountChange(newAmount) },
                     onResetAmount = { viewModel.onResetAmount() },
-                    onClick = {
-                        viewModel.onCurrencyClicked(rate.currency)
-                    },
-                    onConfirmInput = {
-                        viewModel.onConfirmInput(rate.currency)
-                    }
+                    onClick = { viewModel.onCurrencyClicked(rate.currency) },
+                    onConfirmInput = { viewModel.onConfirmInput(rate.currency) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -168,7 +160,8 @@ fun CurrencyItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                if (!isInputMode == !isEditable) {
+                // Баланс показываем если не в режиме ввода, либо если элемент редактируемый
+                if (!isInputMode || isEditable) {
                     Text(
                         text = stringResource(R.string.balance_label) + ": " +
                                 stringResource(getCurrencySymbolRes(currency)) +
@@ -182,7 +175,6 @@ fun CurrencyItem(
             }
         }
 
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -194,17 +186,13 @@ fun CurrencyItem(
                 )
             }
 
-            val displayValue = if (isInputMode) {
-                amount.formatTwoDecimalLocalized()
-            } else {
-                rate.formatTwoDecimalLocalized()
-            }
+            val displayValue =
+                if (isInputMode) amount.formatTwoDecimalLocalized() else rate.formatTwoDecimalLocalized()
 
             BasicTextField(
                 value = displayValue,
                 onValueChange = {
                     if (isEditable) {
-
                         val value = it.toDoubleOrNull()
                         if (value != null) {
                             onAmountChange(value)
@@ -220,9 +208,7 @@ fun CurrencyItem(
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = {
-                        onConfirmInput()
-                    }
+                    onDone = { onConfirmInput() }
                 ),
                 modifier = Modifier.width(IntrinsicSize.Min)
             )
@@ -237,10 +223,8 @@ fun CurrencyItem(
                 )
             }
         }
-
     }
 }
-
 
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -257,8 +241,8 @@ fun CurrencyItemPreview() {
             onAmountChange = {},
             onResetAmount = {},
             onClick = {},
-
-            )
+            onConfirmInput = {}
+        )
     }
 }
 
@@ -276,6 +260,8 @@ fun CurrencyItemPreview2() {
             balance = 75000.0,
             onAmountChange = {},
             onResetAmount = {},
-            onClick = {})
+            onClick = {},
+            onConfirmInput = {}
+        )
     }
 }
