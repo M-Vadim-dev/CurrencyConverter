@@ -34,4 +34,6 @@
     <string name="currency_usd">Американский Доллар</string>
     <string name="currency_zar">Южноафриканский Ранд</string>
     <string name="balance_label">Баланс</string>
+    <string name="exchange_format">%1$s в %2$s</string>
+    <string name="buy_currency_format">Купить %1$s за %2$s</string>
 </resources>

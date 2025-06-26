@@ -61,12 +61,12 @@ fun CurrencyScreen(
     val listState = rememberLazyListState()
 
     LaunchedEffect(state.selectedCurrency) {
-        val index =
-            viewModel.getFilteredRates().indexOfFirst { it.currency == state.selectedCurrency }
+
+        val index = state.filteredRates.indexOfFirst { it.currency == state.selectedCurrency }
         if (index >= 0) listState.animateScrollToItem(index)
     }
 
-    LaunchedEffect(key1 = state.isConfirmed) {
+    LaunchedEffect(state.isConfirmed) {
         if (state.isConfirmed) {
             state.targetCurrencyForExchange?.let { targetCurrency ->
                 onNavigateToExchange(state.selectedCurrency, targetCurrency)
@@ -160,8 +160,8 @@ fun CurrencyItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                // Баланс показываем если не в режиме ввода, либо если элемент редактируемый
-                if (!isInputMode || isEditable) {
+
+                if (!isInputMode || !isEditable) {
                     Text(
                         text = stringResource(R.string.balance_label) + ": " +
                                 stringResource(getCurrencySymbolRes(currency)) +
@@ -210,6 +210,7 @@ fun CurrencyItem(
                 keyboardActions = KeyboardActions(
                     onDone = { onConfirmInput() }
                 ),
+                enabled = isInputMode && isEditable,
                 modifier = Modifier.width(IntrinsicSize.Min)
             )
             if (isInputMode && isEditable) {
@@ -249,13 +250,13 @@ fun CurrencyItemPreview() {
 @Preview(showBackground = true, locale = "ru")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, locale = "ru")
 @Composable
-fun CurrencyItemPreview2() {
+fun CurrencyItemEditPreview() {
     CurrencyConverterTheme {
         CurrencyItem(
             currencyCode = "RUB",
             rate = 0.85,
             isInputMode = true,
-            isEditable = false,
+            isEditable = true,
             amount = 1000.0,
             balance = 75000.0,
             onAmountChange = {},

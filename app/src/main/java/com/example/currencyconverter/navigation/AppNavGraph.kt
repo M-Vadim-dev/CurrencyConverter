@@ -19,18 +19,6 @@ fun AppNavGraph(navController: NavHostController) {
     ) {
         composable(
             route = NavRoutes.Currency.route,
-            enterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
-            },
-            exitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
-            },
-            popEnterTransition = {
-                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right)
-            },
-            popExitTransition = {
-                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
-            }
         ) {
             CurrencyScreen(
                 onNavigateToExchange = { fromCurrency, toCurrency ->

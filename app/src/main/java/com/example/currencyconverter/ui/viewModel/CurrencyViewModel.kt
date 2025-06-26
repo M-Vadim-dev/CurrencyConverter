@@ -7,13 +7,13 @@ import com.example.currencyconverter.data.dataSource.remote.dto.RateDto
 import com.example.currencyconverter.data.dataSource.room.account.dbo.AccountDbo
 import com.example.currencyconverter.data.repository.CurrencyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,7 +29,6 @@ data class CurrencyScreenState(
     val isEditable: Boolean = false,
     val isConfirmed: Boolean = false,
     val targetCurrencyForExchange: String? = ""
-
 )
 
 @HiltViewModel
@@ -40,101 +39,43 @@ class CurrencyViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CurrencyScreenState())
     val uiState: StateFlow<CurrencyScreenState> = _uiState.asStateFlow()
 
-    private var ratesJob: Job? = null
-
     init {
-        viewModelScope.launch {
-            currencyRepository.getAccountsFlow()
-                .collect { accounts ->
-                    val balanceMap = accounts.associate { it.code to it.amount.toDouble() }
-                    _uiState.update { it.copy(accounts = accounts, balanceMap = balanceMap) }
-                }
-        }
-        startRatesUpdates()
+        observeAccounts()
+        observeRates()
     }
 
-    fun onCurrencyClicked(currency: String) {
-        val state = _uiState.value
+    fun onCurrencyClicked(currency: String) = with(_uiState.value) {
         when {
-            state.isInputMode -> {
-                _uiState.update {
-                    it.copy(
-                        isConfirmed = true,
-                        targetCurrencyForExchange = currency
-                    )
-                }
-            }
-
-            state.selectedCurrency != currency -> {
-                _uiState.update {
-                    it.copy(
-                        selectedCurrency = currency,
-                        isInputMode = false,
-                        isEditable = false,
-                        amount = 1.0,
-                        isConfirmed = false
-                    )
-                }
-            }
-
-            state.selectedCurrency == currency && !state.isInputMode -> {
-                _uiState.update {
-                    it.copy(
-                        isInputMode = true,
-                        isEditable = true,
-                        amount = 1.0,
-                        isConfirmed = false
-                    )
-                }
-            }
+            isInputMode -> confirmExchange(currency)
+            selectedCurrency != currency -> selectCurrency(currency)
+            else -> enterInputMode()
         }
     }
 
     fun onAmountChange(newAmount: Double) {
-        _uiState.update {
-            it.copy(amount = newAmount, isConfirmed = false)
-        }
+        _uiState.update { it.copy(amount = newAmount, isConfirmed = false) }
     }
 
     fun onResetAmount() {
         _uiState.update {
-            it.copy(
-                amount = 1.0,
-                isInputMode = false,
-                isEditable = false,
-                isConfirmed = false
-            )
+            it.resetUiFlags().copy(amount = 1.0)
         }
     }
 
-    fun getFilteredRates(): List<RateDto> {
-        val state = _uiState.value
-        return if (state.isInputMode) {
-            filterRates(state.rates, state.accounts, state.amount)
-        } else {
-            state.rates
-        }
-    }
-
-    fun setInputMode(isInputMode: Boolean) {
+    fun setInputMode(enabled: Boolean) {
         _uiState.update {
-            if (isInputMode) it.copy(
-                isInputMode = true,
-                amount = if (it.amount <= 0.0) 1.0 else it.amount
-            )
-            else it.copy(isInputMode = false, amount = 1.0)
+            if (enabled) {
+                it.copy(
+                    isInputMode = true,
+                    amount = if (it.amount <= 0.0) 1.0 else it.amount
+                )
+            } else {
+                it.resetUiFlags().copy(amount = 1.0)
+            }
         }
-        startRatesUpdates()
     }
 
-    fun onConfirmInput(targetCurrency: String) {
-        _uiState.update {
-            it.copy(
-                isConfirmed = true,
-                targetCurrencyForExchange = targetCurrency
-            )
-        }
-    }
+    fun onConfirmInput(targetCurrency: String) = confirmExchange(targetCurrency)
 
     fun clearConfirmation() {
         _uiState.update {
@@ -145,29 +86,66 @@ class CurrencyViewModel @Inject constructor(
         }
     }
 
-    private fun startRatesUpdates() {
-        ratesJob?.cancel()
-        ratesJob = viewModelScope.launch {
-            while (isActive) {
-                val state = _uiState.value
-                val rates = try {
-                    currencyRepository.getRates(state.selectedCurrency, state.amount)
-                } catch (_: Exception) {
-                    emptyList()
-                }
-
-                val filteredRates = if (state.isInputMode) {
-                    filterRates(rates, state.accounts, state.amount)
-                } else {
-                    rates
-                }
-
-                _uiState.update {
-                    it.copy(rates = rates, filteredRates = filteredRates)
-                }
-
-                delay(1000L)
+    private fun observeAccounts() {
+        viewModelScope.launch {
+            currencyRepository.getAccountsFlow().collect { accounts ->
+                val balanceMap = accounts.associate { it.code to it.amount.toDouble() }
+                _uiState.update { it.copy(accounts = accounts, balanceMap = balanceMap) }
             }
+        }
+    }
+
+    private fun observeRates() {
+        viewModelScope.launch {
+            tickerFlow(1000L)
+                .combine(_uiState) { _, state -> state }
+                .collect { state ->
+                    val rates = runCatching {
+                        currencyRepository.getRates(state.selectedCurrency, state.amount)
+                    }.getOrDefault(emptyList())
+
+                    val filtered = if (state.isInputMode) {
+                        filterRates(rates, state.accounts, state.amount)
+                    } else rates
+
+                    _uiState.update { it.copy(rates = rates, filteredRates = filtered) }
+                }
+        }
+    }
+
+    fun tickerFlow(periodMillis: Long): kotlinx.coroutines.flow.Flow<Unit> = flow {
+        while (true) {
+            emit(Unit)
+            delay(periodMillis)
+        }
+    }
+
+    private fun confirmExchange(targetCurrency: String) {
+        _uiState.update {
+            it.copy(isConfirmed = true, targetCurrencyForExchange = targetCurrency)
+        }
+    }
+
+    private fun selectCurrency(currency: String) {
+        _uiState.update {
+            it.copy(
+                selectedCurrency = currency,
+                isInputMode = false,
+                isEditable = false,
+                amount = 1.0,
+                isConfirmed = false
+            )
+        }
+    }
+
+    private fun enterInputMode() {
+        _uiState.update {
+            it.copy(
+                isInputMode = true,
+                isEditable = true,
+                amount = 1.0,
+                isConfirmed = false
+            )
         }
     }
 
@@ -176,13 +154,20 @@ class CurrencyViewModel @Inject constructor(
         accounts: List<AccountDbo>,
         amountToBuy: Double
     ): List<RateDto> {
-        val allowedCurrencies = accounts.filter { account ->
+        val allowed = accounts.filter { account ->
             val rate = rates.find { it.currency == account.code }?.value ?: 0.0
-            val requiredAmount = amountToBuy * rate
-            account.amount >= requiredAmount
+            account.amount >= amountToBuy * rate
         }.map { it.code }.toSet()
 
-        return rates.filter { allowedCurrencies.contains(it.currency) }
+        return rates.filter { rate ->
+            rate.currency in allowed || rate.currency == _uiState.value.selectedCurrency
+        }
     }
+
+    private fun CurrencyScreenState.resetUiFlags() = copy(
+        isInputMode = false,
+        isEditable = false,
+        isConfirmed = false
+    )
 
 }

@@ -104,4 +104,8 @@
     <string name="currency_zar">South Africa Rand</string>
 
     <string name="balance_label">Balance</string>
+    <string name="exchange_rate_format" translatable="false">%1$s1 = %2$s</string>
+    <string name="exchange_format">%1$s to %2$s</string>
+    <string name="buy_currency_format">Buy %1$s for %2$s</string>
+
 </resources>
