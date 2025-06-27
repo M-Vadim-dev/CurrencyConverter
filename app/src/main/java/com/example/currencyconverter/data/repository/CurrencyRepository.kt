@@ -51,24 +51,4 @@ class CurrencyRepository @Inject constructor(
         insertTransaction(transaction)
     }
 
-
-    suspend fun updateAccountsAfterExchange(
-        fromCurrency: String,
-        toCurrency: String,
-        fromAmount: Double,
-        toAmount: Double,
-    ) {
-        val allAccounts = getAccounts()
-
-        val fromAccount = allAccounts.find { it.code == fromCurrency }
-        val toAccount = allAccounts.find { it.code == toCurrency }
-
-        if (fromAccount != null && toAccount != null) {
-            val updatedFrom = fromAccount.copy((fromAccount.amount - fromAmount).toString())
-            val updatedTo = toAccount.copy((toAccount.amount + toAmount).toString())
-            insertOrUpdateAccounts(updatedFrom, updatedTo)
-        } else {
-            throw IllegalStateException("Account for $fromCurrency or $toCurrency not found")
-        }
-    }
 }

@@ -1,12 +1,15 @@
 package com.example.currencyconverter.ui.viewModel
 
-import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.currencyconverter.data.dataSource.room.account.dbo.AccountDbo
 import com.example.currencyconverter.data.repository.CurrencyRepository
+import com.example.currencyconverter.navigation.NavRoutes.Companion.AMOUNT_ARG
+import com.example.currencyconverter.navigation.NavRoutes.Companion.FROM_CURRENCY_ARG
+import com.example.currencyconverter.navigation.NavRoutes.Companion.RATE_ARG
+import com.example.currencyconverter.navigation.NavRoutes.Companion.TO_CURRENCY_ARG
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,17 +50,16 @@ class ExchangeViewModel @Inject constructor(
     val uiState: StateFlow<ExchangeScreenState> = _uiState.asStateFlow()
 
     init {
-        val fromCurrency = savedStateHandle.get<String>("fromCurrency") ?: "USD"
-        val toCurrency = savedStateHandle.get<String>("toCurrency") ?: ""
-        val rate = savedStateHandle.get<Float>("rare")?.toDouble() ?: 0.0
-        val amount = savedStateHandle.get<Float>("amount")?.toDouble() ?: 0.0
-        Log.d("!!!", "курс = $rate, сумма = $amount ")
+        val fromCurrency = savedStateHandle.get<String>(FROM_CURRENCY_ARG) ?: "USD"
+        val toCurrency = savedStateHandle.get<String>(TO_CURRENCY_ARG) ?: ""
+        val rate = savedStateHandle.get<Float>(RATE_ARG)?.toDouble() ?: 0.0
+        val amount = savedStateHandle.get<Float>(AMOUNT_ARG)?.toDouble() ?: 0.0
 
         _uiState.update {
             it.copy(
                 fromCurrency = fromCurrency,
                 toCurrency = toCurrency,
-                exchangeRate = rate,
+                exchangeRate = rate / amount,
                 fromAmount = amount,
                 toAmount = rate,
             )
@@ -68,13 +70,13 @@ class ExchangeViewModel @Inject constructor(
                 repository.getAccountsFlow(),
                 _uiState.map { it.fromAmount }
             ) { accounts, fromAmount ->
-                val fromBalance = accounts.find { it.code == fromCurrency }?.amount ?: 0.0
+                val fromBalance = accounts.find { it.code == toCurrency }?.amount ?: 0.0
                 Triple(accounts, fromBalance, fromAmount)
             }.collect { (accounts, fromBalance, toAmount) ->
                 _uiState.update {
                     it.copy(
                         accounts = accounts,
-                        balanceAfterExchange = fromBalance - toAmount
+                        balanceAfterExchange = fromBalance - rate
                     )
                 }
             }
@@ -89,11 +91,7 @@ class ExchangeViewModel @Inject constructor(
         val state = _uiState.value
 
         val error = when {
-            state.fromAmount <= 0.0 || state.toAmount <= 0.0 ||
-                    state.exchangeRate <= 0.0 ||
-                    state.fromCurrency == state.toCurrency -> ExchangeError.INVALID_AMOUNT_OR_RATE
-
-            state.fromAmount > state.balanceAfterExchange -> ExchangeError.EXCHANGE_FAILED
+            state.exchangeRate <= 0.0 || state.fromCurrency == state.toCurrency -> ExchangeError.INVALID_AMOUNT_OR_RATE
 
             else -> null
         }
@@ -104,30 +102,16 @@ class ExchangeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            try {
-                repository.saveTransaction(
-                    fromCurrency = state.fromCurrency,
-                    toCurrency = state.toCurrency,
-                    fromAmount = state.fromAmount,
-                    toAmount = state.toAmount,
-                    dateTime = LocalDateTime.now(),
-                )
+            repository.saveTransaction(
+                fromCurrency = state.fromCurrency,
+                toCurrency = state.toCurrency,
+                fromAmount = state.fromAmount,
+                toAmount = state.toAmount,
+                dateTime = LocalDateTime.now(),
+            )
 
-                repository.updateAccountsAfterExchange(
-                    fromCurrency = state.fromCurrency,
-                    toCurrency = state.toCurrency,
-                    fromAmount = state.fromAmount,
-                    toAmount = state.toAmount
-                )
-
-                _uiState.update {
-                    it.copy(isSuccess = true, isLoading = false, errorMessage = null)
-                }
-
-            } catch (_: Exception) {
-                _uiState.update {
-                    it.copy(errorMessage = ExchangeError.EXCHANGE_FAILED, isLoading = false)
-                }
+            _uiState.update {
+                it.copy(isSuccess = true, isLoading = false, errorMessage = null)
             }
         }
     }

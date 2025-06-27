@@ -3,21 +3,37 @@ package com.example.currencyconverter.navigation
 import android.net.Uri
 
 sealed class NavRoutes(val route: String) {
-    object Currency : NavRoutes("currency")
+    object Currency : NavRoutes(CURRENCY_ROUTE)
+
     object Exchange : NavRoutes(
-        "exchange?fromCurrency={fromCurrency}&toCurrency={toCurrency}&rate={rate}&amount={amount}"
+        "exchange?" +
+                "${FROM_CURRENCY_ARG}={${FROM_CURRENCY_ARG}}&" +
+                "${TO_CURRENCY_ARG}={${TO_CURRENCY_ARG}}&" +
+                "${RATE_ARG}={${RATE_ARG}}&" +
+                "${AMOUNT_ARG}={${AMOUNT_ARG}}"
     ) {
         fun createRoute(
             fromCurrency: String,
             toCurrency: String,
             rate: Double,
             amount: Double,
-        ) = "exchange" +
-                "?fromCurrency=${Uri.encode(fromCurrency)}" +
-                "&toCurrency=${Uri.encode(toCurrency)}" +
-                "&rate=${rate.toFloat()}" +
-                "&amount=${amount.toFloat()}"
+        ) = EXCHANGE_ROUTE +
+                "?${FROM_CURRENCY_ARG}=${Uri.encode(fromCurrency)}" +
+                "&${TO_CURRENCY_ARG}=${Uri.encode(toCurrency)}" +
+                "&${RATE_ARG}=${rate.toFloat()}" +
+                "&${AMOUNT_ARG}=${amount.toFloat()}"
     }
 
-    object Transactions : NavRoutes("transactions")
+    object Transactions : NavRoutes(TRANSACTIONS_ROUTE)
+
+    companion object {
+        const val CURRENCY_ROUTE = "currency"
+        const val EXCHANGE_ROUTE = "exchange"
+        const val TRANSACTIONS_ROUTE = "transactions"
+
+        const val FROM_CURRENCY_ARG = "fromCurrency"
+        const val TO_CURRENCY_ARG = "toCurrency"
+        const val RATE_ARG = "rate"
+        const val AMOUNT_ARG = "amount"
+    }
 }

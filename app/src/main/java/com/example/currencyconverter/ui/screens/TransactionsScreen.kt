@@ -48,7 +48,8 @@ fun TransactionsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface, topBar = {
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
             TopAppBar(title = {
                 Text(
                     text = stringResource(R.string.transactions),
@@ -115,7 +116,9 @@ private fun TransactionItem(transaction: TransactionDbo) {
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.background
@@ -128,13 +131,15 @@ private fun TransactionItem(transaction: TransactionDbo) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "${transaction.fromAmount.formatTwoDecimalLocalized()} ${transaction.from} → ${transaction.toAmount.formatTwoDecimalLocalized()} ${transaction.to}",
+                text = "${transaction.toAmount.formatTwoDecimalLocalized()} ${transaction.to} → ${transaction.fromAmount.formatTwoDecimalLocalized()} ${transaction.from}",
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = formattedDate,
+                color = MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyMedium
             )
         }

@@ -6,6 +6,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.currencyconverter.navigation.NavRoutes.Companion.AMOUNT_ARG
+import com.example.currencyconverter.navigation.NavRoutes.Companion.FROM_CURRENCY_ARG
+import com.example.currencyconverter.navigation.NavRoutes.Companion.RATE_ARG
+import com.example.currencyconverter.navigation.NavRoutes.Companion.TO_CURRENCY_ARG
 import com.example.currencyconverter.ui.screens.CurrencyScreen
 import com.example.currencyconverter.ui.screens.ExchangeScreen
 import com.example.currencyconverter.ui.screens.TransactionsScreen
@@ -31,19 +35,19 @@ fun AppNavGraph(navController: NavHostController) {
         composable(
             route = NavRoutes.Exchange.route,
             arguments = listOf(
-                navArgument("fromCurrency") {
+                navArgument(FROM_CURRENCY_ARG) {
                     type = NavType.StringType
                     defaultValue = ""
                 },
-                navArgument("toCurrency") {
+                navArgument(TO_CURRENCY_ARG) {
                     type = NavType.StringType
                     defaultValue = ""
                 },
-                navArgument("rate") {
+                navArgument(RATE_ARG) {
                     type = NavType.FloatType
                     defaultValue = 0f
                 },
-                navArgument("amount") {
+                navArgument(AMOUNT_ARG) {
                     type = NavType.FloatType
                     defaultValue = 0f
                 }

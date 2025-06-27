@@ -1,6 +1,5 @@
 package com.example.currencyconverter.ui.screens
 
-import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,9 +48,7 @@ fun CurrencyScreen(
                 val rate =
                     state.filteredRates.firstOrNull { it.currency == targetCurrency }?.value ?: 0.0
                 onNavigateToExchange(state.selectedCurrency, targetCurrency, rate, state.amount)
-                Log.i("!!!", "${state.selectedCurrency}, $targetCurrency, $rate, ${state.amount} ")
             }
-
         }
     }
 
