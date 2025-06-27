@@ -95,7 +95,7 @@ internal fun CurrencyItem(
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
-                if (!isInputMode || !isSelected) {
+                if (showBalance && (!isInputMode || !isSelected)) {
                     Text(
                         text = stringResource(R.string.balance_label) + ": " +
                                 stringResource(getCurrencySymbolRes(currency)) + balance,

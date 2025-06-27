@@ -70,7 +70,6 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
 //    testImplementation(libs.junit)
 //    testImplementation(libs.testng)
-//    testImplementation(libs.junit.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -119,6 +118,8 @@ dependencies {
     // test
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
-    testImplementation(libs.junit.v4132)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(kotlin("test"))
+    testImplementation(libs.junit.junit)
+    testImplementation(libs.mockk)
 }
