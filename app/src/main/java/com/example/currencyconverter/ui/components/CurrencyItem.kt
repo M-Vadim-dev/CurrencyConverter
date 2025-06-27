@@ -1,4 +1,4 @@
-package com.example.currencyconverter.ui
+package com.example.currencyconverter.ui.components
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
@@ -7,29 +7,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,7 +29,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.currencyconverter.R
 import com.example.currencyconverter.data.mapper.CurrencyMapping.getCurrencyCodeRes
 import com.example.currencyconverter.data.mapper.CurrencyMapping.getCurrencyIconRes
@@ -48,74 +36,18 @@ import com.example.currencyconverter.data.mapper.CurrencyMapping.getCurrencyName
 import com.example.currencyconverter.data.mapper.CurrencyMapping.getCurrencySymbolRes
 import com.example.currencyconverter.domain.entity.Currency
 import com.example.currencyconverter.ui.theme.CurrencyConverterTheme
-import com.example.currencyconverter.ui.viewModel.CurrencyViewModel
-import com.example.currencyconverter.utils.formatTwoDecimalLocalized
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CurrencyScreen(
-    onNavigateToExchange: (fromCurrency: String, toCurrency: String) -> Unit,
-    viewModel: CurrencyViewModel = hiltViewModel(),
-) {
-    val state by viewModel.uiState.collectAsState()
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(state.selectedCurrency) {
-
-        val index = state.filteredRates.indexOfFirst { it.currency == state.selectedCurrency }
-        if (index >= 0) listState.animateScrollToItem(index)
-    }
-
-    LaunchedEffect(state.isConfirmed) {
-        if (state.isConfirmed) {
-            state.targetCurrencyForExchange?.let { targetCurrency ->
-                onNavigateToExchange(state.selectedCurrency, targetCurrency)
-                viewModel.setInputMode(false)
-                viewModel.clearConfirmation()
-            }
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .systemBarsPadding()
-    ) {
-        LazyColumn(state = listState) {
-            items(state.filteredRates, key = { it.currency }) { rate ->
-                val isEditableThisItem =
-                    state.isInputMode && rate.currency == state.selectedCurrency
-
-                CurrencyItem(
-                    currencyCode = rate.currency,
-                    rate = rate.value,
-                    isInputMode = state.isInputMode,
-                    isEditable = isEditableThisItem,
-                    amount = state.amount,
-                    balance = state.balanceMap[rate.currency] ?: 0.0,
-                    onAmountChange = { newAmount -> viewModel.onAmountChange(newAmount) },
-                    onResetAmount = { viewModel.onResetAmount() },
-                    onClick = { viewModel.onCurrencyClicked(rate.currency) },
-                    onConfirmInput = { viewModel.onConfirmInput(rate.currency) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
 
 @Composable
 fun CurrencyItem(
     currencyCode: String,
-    rate: Double,
-    isInputMode: Boolean,
-    isEditable: Boolean,
-    amount: Double = 0.0,
-    balance: Double = 0.0,
-    onAmountChange: (Double) -> Unit = {},
+    rate: String,
+    isSelected: Boolean = false,
+    isInputMode: Boolean = false,
+    amount: String,
+    balance: String,
+    onAmountChange: (String) -> Unit = {},
     onResetAmount: () -> Unit = {},
     onClick: () -> Unit = {},
-    onConfirmInput: () -> Unit = {}
 ) {
     val currency = Currency.fromCode(currencyCode)
 
@@ -126,8 +58,7 @@ fun CurrencyItem(
             .clickable { onClick() }
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
-    ) {
+        horizontalArrangement = Arrangement.Start) {
         if (currency != null) {
             Icon(
                 painter = painterResource(getCurrencyIconRes(currency)),
@@ -161,11 +92,10 @@ fun CurrencyItem(
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
-                if (!isInputMode || !isEditable) {
+                if (!isInputMode || !isSelected) {
                     Text(
                         text = stringResource(R.string.balance_label) + ": " +
-                                stringResource(getCurrencySymbolRes(currency)) +
-                                balance.formatTwoDecimalLocalized(),
+                                stringResource(getCurrencySymbolRes(currency)) + balance,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 1,
@@ -186,42 +116,27 @@ fun CurrencyItem(
                 )
             }
 
-            val displayValue =
-                if (isInputMode) amount.formatTwoDecimalLocalized() else rate.formatTwoDecimalLocalized()
-
             BasicTextField(
-                value = displayValue,
-                onValueChange = {
-                    if (isEditable) {
-                        val value = it.toDoubleOrNull()
-                        if (value != null) {
-                            onAmountChange(value)
-                        }
-                    }
-                },
+                value = if (isSelected && isInputMode) amount else rate,
+                onValueChange = { onAmountChange(it) },
                 textStyle = MaterialTheme.typography.titleMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground,
                 ),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Done
+                    keyboardType = KeyboardType.Number, imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions(
-                    onDone = { onConfirmInput() }
-                ),
-                enabled = isInputMode && isEditable,
+                enabled = isInputMode && isSelected,
                 modifier = Modifier.width(IntrinsicSize.Min)
             )
-            if (isInputMode && isEditable) {
+            if (isInputMode && isSelected) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .size(16.dp)
-                        .clickable { onResetAmount() }
-                )
+                        .clickable { onResetAmount() })
             }
         }
     }
@@ -234,15 +149,14 @@ fun CurrencyItemPreview() {
     CurrencyConverterTheme {
         CurrencyItem(
             currencyCode = "EUR",
-            rate = 0.85,
+            rate = "0.85",
             isInputMode = false,
-            isEditable = false,
-            amount = 100.0,
-            balance = 1000.0,
+            isSelected = false,
+            amount = "100.0",
+            balance = "1000.0",
             onAmountChange = {},
             onResetAmount = {},
             onClick = {},
-            onConfirmInput = {}
         )
     }
 }
@@ -254,15 +168,14 @@ fun CurrencyItemEditPreview() {
     CurrencyConverterTheme {
         CurrencyItem(
             currencyCode = "RUB",
-            rate = 0.85,
+            rate = "0.85",
             isInputMode = true,
-            isEditable = true,
-            amount = 1000.0,
-            balance = 75000.0,
+            isSelected = true,
+            amount = "1000.0",
+            balance = "75000.0",
             onAmountChange = {},
             onResetAmount = {},
             onClick = {},
-            onConfirmInput = {}
         )
     }
 }

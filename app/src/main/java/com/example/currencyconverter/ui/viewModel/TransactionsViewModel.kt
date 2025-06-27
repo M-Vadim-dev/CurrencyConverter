@@ -17,7 +17,7 @@ import javax.inject.Inject
 data class TransactionsScreenState(
     val transactions: List<TransactionDbo> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 )
 
 @HiltViewModel

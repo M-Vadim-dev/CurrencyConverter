@@ -1,15 +1,14 @@
 package com.example.currencyconverter.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.currencyconverter.ui.CurrencyScreen
-import com.example.currencyconverter.ui.ExchangeScreen
-import com.example.currencyconverter.ui.TransactionsScreen
+import com.example.currencyconverter.ui.screens.CurrencyScreen
+import com.example.currencyconverter.ui.screens.ExchangeScreen
+import com.example.currencyconverter.ui.screens.TransactionsScreen
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {
@@ -21,9 +20,12 @@ fun AppNavGraph(navController: NavHostController) {
             route = NavRoutes.Currency.route,
         ) {
             CurrencyScreen(
-                onNavigateToExchange = { fromCurrency, toCurrency ->
-                    navController.navigate(NavRoutes.Exchange.createRoute(fromCurrency, toCurrency))
-                }
+                onNavigateToExchange = { from, to, amount, rate ->
+                    navController.navigate(
+                        NavRoutes.Exchange.createRoute(from, to, amount, rate)
+                    )
+                },
+                onNavigateToTransactions = { navController.navigate(NavRoutes.Transactions.route) }
             )
         }
         composable(
@@ -32,19 +34,22 @@ fun AppNavGraph(navController: NavHostController) {
                 navArgument("fromCurrency") {
                     type = NavType.StringType
                     defaultValue = ""
-                    nullable = true
                 },
                 navArgument("toCurrency") {
                     type = NavType.StringType
                     defaultValue = ""
-                    nullable = true
+                },
+                navArgument("rate") {
+                    type = NavType.FloatType
+                    defaultValue = 0f
+                },
+                navArgument("amount") {
+                    type = NavType.FloatType
+                    defaultValue = 0f
                 }
             ),
         ) {
-            ExchangeScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToTransactions = { navController.navigate(NavRoutes.Transactions.route) }
-            )
+            ExchangeScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(NavRoutes.Transactions.route) {
             TransactionsScreen(

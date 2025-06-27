@@ -33,7 +33,11 @@
     <string name="currency_try">Турецкая Лира</string>
     <string name="currency_usd">Американский Доллар</string>
     <string name="currency_zar">Южноафриканский Ранд</string>
+    <string name="transactions">Транзакции</string>
     <string name="balance_label">Баланс</string>
     <string name="exchange_format">%1$s в %2$s</string>
     <string name="buy_currency_format">Купить %1$s за %2$s</string>
+    <string name="no_transactions">Нет транзакций</string>
+    <string name="error_invalid_amount_or_rate">Неверная сумма или курс</string>
+    <string name="error_exchange_failed">Ошибка обмена</string>
 </resources>

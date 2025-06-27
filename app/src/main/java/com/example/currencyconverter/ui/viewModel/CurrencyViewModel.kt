@@ -11,9 +11,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,11 +24,16 @@ data class CurrencyScreenState(
     val filteredRates: List<RateDto> = emptyList(),
     val accounts: List<AccountDbo> = emptyList(),
     val balanceMap: Map<String, Double> = emptyMap(),
-    val isInputMode: Boolean = false,
-    val isEditable: Boolean = false,
+    val mode: CurrencyScreenMode = CurrencyScreenMode.VIEW,
+    val targetCurrencyForExchange: String? = null,
     val isConfirmed: Boolean = false,
-    val targetCurrencyForExchange: String? = ""
 )
+
+enum class CurrencyScreenMode {
+    VIEW,
+    EDIT_AMOUNT,
+    SELECT_TARGET,
+}
 
 @HiltViewModel
 class CurrencyViewModel @Inject constructor(
@@ -45,45 +49,58 @@ class CurrencyViewModel @Inject constructor(
     }
 
     fun onCurrencyClicked(currency: String) = with(_uiState.value) {
-        when {
-            isInputMode -> confirmExchange(currency)
-            selectedCurrency != currency -> selectCurrency(currency)
-            else -> enterInputMode()
-        }
-    }
+        when (mode) {
+            CurrencyScreenMode.VIEW -> {
+                if (selectedCurrency == currency) {
+                    _uiState.update {
+                        it.copy(
+                            mode = CurrencyScreenMode.EDIT_AMOUNT,
+                            amount = if (amount <= 0.0) 1.0 else amount,
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            selectedCurrency = currency,
+                            amount = 1.0,
+                            mode = CurrencyScreenMode.VIEW,
+                        )
+                    }
+                }
+            }
 
-    fun onAmountChange(newAmount: Double) {
-        _uiState.update { it.copy(amount = newAmount, isConfirmed = false) }
-    }
+            CurrencyScreenMode.EDIT_AMOUNT -> {
+                if (selectedCurrency == currency) _uiState.update { it.copy(mode = CurrencyScreenMode.SELECT_TARGET) }
+                else confirmExchange(currency)
+            }
 
-    fun onResetAmount() {
-        _uiState.update {
-            it.resetUiFlags().copy(amount = 1.0)
-        }
-    }
-
-    fun setInputMode(enabled: Boolean) {
-        _uiState.update {
-            if (enabled) {
-                it.copy(
-                    isInputMode = true,
-                    amount = if (it.amount <= 0.0) 1.0 else it.amount
-                )
-            } else {
-                it.resetUiFlags().copy(amount = 1.0)
+            CurrencyScreenMode.SELECT_TARGET -> {
+                confirmExchange(currency)
             }
         }
     }
 
-    fun onConfirmInput(targetCurrency: String) = confirmExchange(targetCurrency)
+    fun onAmountChange(newAmount: String) {
+        val amountDouble = newAmount.toDouble()
+        if (amountDouble.isNaN() || amountDouble.isInfinite() || amountDouble < 0) return
 
-    fun clearConfirmation() {
-        _uiState.update {
-            it.copy(
-                isConfirmed = false,
-                targetCurrencyForExchange = null
-            )
-        }
+        _uiState.update { it.copy(amount = amountDouble, isConfirmed = false) }
+
+        val state = _uiState.value
+        val filtered =
+            if (state.mode == CurrencyScreenMode.EDIT_AMOUNT || state.mode == CurrencyScreenMode.SELECT_TARGET) {
+                filterAndCalculateRatesWithBalanceCheck(
+                    state.rates, state.accounts, amountDouble, state.selectedCurrency
+                )
+            } else {
+                calculateRatesWithoutFilter(state.rates, amountDouble, state.selectedCurrency)
+            }
+
+        _uiState.update { it.copy(filteredRates = filtered) }
+    }
+
+    fun onResetAmount() {
+        _uiState.update { it.copy(amount = 1.0, mode = CurrencyScreenMode.VIEW) }
     }
 
     private fun observeAccounts() {
@@ -97,77 +114,73 @@ class CurrencyViewModel @Inject constructor(
 
     private fun observeRates() {
         viewModelScope.launch {
-            tickerFlow(1000L)
-                .combine(_uiState) { _, state -> state }
-                .collect { state ->
-                    val rates = runCatching {
-                        currencyRepository.getRates(state.selectedCurrency, state.amount)
-                    }.getOrDefault(emptyList())
+            while (isActive) {
+                val state = _uiState.value
+                val baseAmount = state.amount
+                val selectedCurrency = state.selectedCurrency
 
-                    val filtered = if (state.isInputMode) {
-                        filterRates(rates, state.accounts, state.amount)
-                    } else rates
+                val rates = runCatching {
+                    currencyRepository.getRates(selectedCurrency, 1.0)
+                }.getOrDefault(emptyList())
 
-                    _uiState.update { it.copy(rates = rates, filteredRates = filtered) }
+                val filtered =
+                    if (state.mode == CurrencyScreenMode.EDIT_AMOUNT || state.mode == CurrencyScreenMode.SELECT_TARGET) {
+                        filterAndCalculateRatesWithBalanceCheck(
+                            rates, state.accounts, baseAmount, selectedCurrency
+                        )
+                    } else {
+                        calculateRatesWithoutFilter(rates, baseAmount, selectedCurrency)
+                    }
+
+                _uiState.update {
+                    it.copy(rates = rates, filteredRates = filtered)
                 }
+
+                delay(1000L)
+            }
         }
     }
 
-    fun tickerFlow(periodMillis: Long): kotlinx.coroutines.flow.Flow<Unit> = flow {
-        while (true) {
-            emit(Unit)
-            delay(periodMillis)
+    private fun filterAndCalculateRatesWithBalanceCheck(
+        rates: List<RateDto>,
+        accounts: List<AccountDbo>,
+        amountToBuy: Double,
+        selectedCurrency: String
+    ): List<RateDto> {
+        val balanceMap = accounts.associate { it.code to it.amount.toDouble() }
+
+        return rates.map { rate ->
+            if (rate.currency == selectedCurrency) {
+                rate.copy(value = amountToBuy)
+            } else {
+                rate.copy(value = amountToBuy * rate.value)
+            }
+        }.filter { rate ->
+            if (rate.currency == selectedCurrency) true
+            else {
+                val balance = balanceMap[rate.currency] ?: 0.0
+                balance >= rate.value
+            }
+        }
+    }
+
+    private fun calculateRatesWithoutFilter(
+        rates: List<RateDto>, amountToBuy: Double, selectedCurrency: String
+    ): List<RateDto> {
+        return rates.map { rate ->
+            if (rate.currency == selectedCurrency) rate.copy(value = amountToBuy)
+            else rate.copy(value = amountToBuy * rate.value)
         }
     }
 
     private fun confirmExchange(targetCurrency: String) {
         _uiState.update {
-            it.copy(isConfirmed = true, targetCurrencyForExchange = targetCurrency)
-        }
-    }
-
-    private fun selectCurrency(currency: String) {
-        _uiState.update {
             it.copy(
-                selectedCurrency = currency,
-                isInputMode = false,
-                isEditable = false,
-                amount = 1.0,
-                isConfirmed = false
+                mode = CurrencyScreenMode.VIEW,
+                isConfirmed = true,
+                targetCurrencyForExchange = targetCurrency
             )
         }
     }
-
-    private fun enterInputMode() {
-        _uiState.update {
-            it.copy(
-                isInputMode = true,
-                isEditable = true,
-                amount = 1.0,
-                isConfirmed = false
-            )
-        }
-    }
-
-    private fun filterRates(
-        rates: List<RateDto>,
-        accounts: List<AccountDbo>,
-        amountToBuy: Double
-    ): List<RateDto> {
-        val allowed = accounts.filter { account ->
-            val rate = rates.find { it.currency == account.code }?.value ?: 0.0
-            account.amount >= amountToBuy * rate
-        }.map { it.code }.toSet()
-
-        return rates.filter { rate ->
-            rate.currency in allowed || rate.currency == _uiState.value.selectedCurrency
-        }
-    }
-
-    private fun CurrencyScreenState.resetUiFlags() = copy(
-        isInputMode = false,
-        isEditable = false,
-        isConfirmed = false
-    )
 
 }

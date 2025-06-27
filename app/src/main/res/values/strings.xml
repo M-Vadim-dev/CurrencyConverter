@@ -103,9 +103,14 @@
     <string name="currency_usd">USA Dollar</string>
     <string name="currency_zar">South Africa Rand</string>
 
+    <string name="transactions">Transactions</string>
+    <string name="no_transactions">No transactions</string>
     <string name="balance_label">Balance</string>
-    <string name="exchange_rate_format" translatable="false">%1$s1 = %2$s</string>
+    <string name="exchange_rate_format" translatable="false">%1$s1 = %2$s%3$s</string>
     <string name="exchange_format">%1$s to %2$s</string>
     <string name="buy_currency_format">Buy %1$s for %2$s</string>
+
+    <string name="error_invalid_amount_or_rate">Invalid amount or exchange rate</string>
+    <string name="error_exchange_failed">Exchange failed</string>
 
 </resources>

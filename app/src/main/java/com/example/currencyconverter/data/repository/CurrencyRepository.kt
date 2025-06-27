@@ -7,6 +7,7 @@ import com.example.currencyconverter.data.dataSource.room.account.dbo.AccountDbo
 import com.example.currencyconverter.data.dataSource.room.transaction.dao.TransactionDao
 import com.example.currencyconverter.data.dataSource.room.transaction.dbo.TransactionDbo
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 class CurrencyRepository @Inject constructor(
@@ -32,4 +33,42 @@ class CurrencyRepository @Inject constructor(
     suspend fun getRates(baseCurrencyCode: String, amount: Double): List<RateDto> =
         ratesService.getRates(baseCurrencyCode, amount)
 
+    suspend fun saveTransaction(
+        fromCurrency: String,
+        toCurrency: String,
+        fromAmount: Double,
+        toAmount: Double,
+        dateTime: LocalDateTime,
+    ) {
+        val transaction = TransactionDbo(
+            id = 0,
+            from = fromCurrency,
+            to = toCurrency,
+            fromAmount = fromAmount,
+            toAmount = toAmount,
+            dateTime = dateTime,
+        )
+        insertTransaction(transaction)
+    }
+
+
+    suspend fun updateAccountsAfterExchange(
+        fromCurrency: String,
+        toCurrency: String,
+        fromAmount: Double,
+        toAmount: Double,
+    ) {
+        val allAccounts = getAccounts()
+
+        val fromAccount = allAccounts.find { it.code == fromCurrency }
+        val toAccount = allAccounts.find { it.code == toCurrency }
+
+        if (fromAccount != null && toAccount != null) {
+            val updatedFrom = fromAccount.copy((fromAccount.amount - fromAmount).toString())
+            val updatedTo = toAccount.copy((toAccount.amount + toAmount).toString())
+            insertOrUpdateAccounts(updatedFrom, updatedTo)
+        } else {
+            throw IllegalStateException("Account for $fromCurrency or $toCurrency not found")
+        }
+    }
 }
