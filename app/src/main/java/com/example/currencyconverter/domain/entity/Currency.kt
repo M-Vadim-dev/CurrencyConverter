@@ -33,5 +33,11 @@ enum class Currency {
     SGD,
     THB,
     TRY,
-    ZAR,
+    ZAR;
+
+    companion object {
+        fun fromCode(code: String): Currency? {
+            return Currency.entries.find { it.name.equals(code, ignoreCase = true) }
+        }
+    }
 }

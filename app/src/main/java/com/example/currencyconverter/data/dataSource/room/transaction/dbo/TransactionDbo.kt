@@ -5,7 +5,6 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.example.currencyconverter.data.dataSource.room.converter.Converters
-import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @Entity(tableName = "transactions")
