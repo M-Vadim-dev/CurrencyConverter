@@ -10,9 +10,9 @@ import com.example.currencyconverter.navigation.NavRoutes.Companion.AMOUNT_ARG
 import com.example.currencyconverter.navigation.NavRoutes.Companion.FROM_CURRENCY_ARG
 import com.example.currencyconverter.navigation.NavRoutes.Companion.RATE_ARG
 import com.example.currencyconverter.navigation.NavRoutes.Companion.TO_CURRENCY_ARG
-import com.example.currencyconverter.ui.screens.CurrencyScreen
-import com.example.currencyconverter.ui.screens.ExchangeScreen
-import com.example.currencyconverter.ui.screens.TransactionsScreen
+import com.example.currencyconverter.ui.screens.currency.CurrencyScreen
+import com.example.currencyconverter.ui.screens.exchange.ExchangeScreen
+import com.example.currencyconverter.ui.screens.transactions.TransactionsScreen
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {

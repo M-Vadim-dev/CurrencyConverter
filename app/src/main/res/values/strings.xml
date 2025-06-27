@@ -113,4 +113,13 @@
     <string name="error_invalid_amount_or_rate">Invalid amount or exchange rate</string>
     <string name="error_exchange_failed">Exchange failed</string>
 
+    <string name="currency_unknown_name">Unknown currency</string>
+    <string name="currency_unknown_code">n/a</string>
+    <string name="currency_unknown_symbol" translatable="false">–</string>
+
+    <plurals name="currency_rub">
+        <item quantity="one">Russian ruble</item>
+        <item quantity="other">Russian rubles</item>
+    </plurals>
+
 </resources>

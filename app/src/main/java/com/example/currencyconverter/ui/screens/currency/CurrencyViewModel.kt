@@ -1,11 +1,11 @@
-package com.example.currencyconverter.ui.viewModel
+package com.example.currencyconverter.ui.screens.currency
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.currencyconverter.data.dataSource.remote.dto.RateDto
-import com.example.currencyconverter.data.dataSource.room.account.dbo.AccountDbo
-import com.example.currencyconverter.data.repository.CurrencyRepository
+import com.example.currencyconverter.domain.entity.Account
+import com.example.currencyconverter.domain.entity.Rate
+import com.example.currencyconverter.domain.repository.AccountRepository
+import com.example.currencyconverter.domain.repository.RateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,28 +16,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@Immutable
-data class CurrencyScreenState(
-    val selectedCurrency: String = "USD",
-    val amount: Double = 1.0,
-    val rates: List<RateDto> = emptyList(),
-    val filteredRates: List<RateDto> = emptyList(),
-    val accounts: List<AccountDbo> = emptyList(),
-    val balanceMap: Map<String, Double> = emptyMap(),
-    val mode: CurrencyScreenMode = CurrencyScreenMode.VIEW,
-    val targetCurrencyForExchange: String? = null,
-    val isConfirmed: Boolean = false,
-)
-
-enum class CurrencyScreenMode {
-    VIEW,
-    EDIT_AMOUNT,
-    SELECT_TARGET,
-}
-
 @HiltViewModel
 class CurrencyViewModel @Inject constructor(
-    private val currencyRepository: CurrencyRepository,
+    private val accountRepository: AccountRepository,
+    private val rateRepository: RateRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CurrencyScreenState())
@@ -48,7 +30,7 @@ class CurrencyViewModel @Inject constructor(
         observeRates()
     }
 
-    fun onCurrencyClicked(currency: String) = with(_uiState.value) {
+    internal fun onCurrencyClicked(currency: String) = with(_uiState.value) {
         when (mode) {
             CurrencyScreenMode.VIEW -> {
                 if (selectedCurrency == currency) {
@@ -80,7 +62,7 @@ class CurrencyViewModel @Inject constructor(
         }
     }
 
-    fun onAmountChange(newAmount: String) {
+    internal fun onAmountChange(newAmount: String) {
         val amountDouble = newAmount.toDouble()
         if (amountDouble.isNaN() || amountDouble.isInfinite() || amountDouble < 0) return
 
@@ -99,13 +81,17 @@ class CurrencyViewModel @Inject constructor(
         _uiState.update { it.copy(filteredRates = filtered) }
     }
 
-    fun onResetAmount() {
+    internal fun onResetAmount() {
         _uiState.update { it.copy(amount = 1.0, mode = CurrencyScreenMode.VIEW) }
+    }
+
+    internal fun onNavigationHandled() {
+        _uiState.update { it.copy(targetCurrencyForExchange = null) }
     }
 
     private fun observeAccounts() {
         viewModelScope.launch {
-            currencyRepository.getAccountsFlow().collect { accounts ->
+            accountRepository.getAccountsFlow().collect { accounts ->
                 val balanceMap = accounts.associate { it.code to it.amount.toDouble() }
                 _uiState.update { it.copy(accounts = accounts, balanceMap = balanceMap) }
             }
@@ -120,7 +106,7 @@ class CurrencyViewModel @Inject constructor(
                 val selectedCurrency = state.selectedCurrency
 
                 val rates = runCatching {
-                    currencyRepository.getRates(selectedCurrency, 1.0)
+                    rateRepository.getRates(selectedCurrency, 1.0)
                 }.getOrDefault(emptyList())
 
                 val filtered =
@@ -142,11 +128,11 @@ class CurrencyViewModel @Inject constructor(
     }
 
     private fun filterAndCalculateRatesWithBalanceCheck(
-        rates: List<RateDto>,
-        accounts: List<AccountDbo>,
+        rates: List<Rate>,
+        accounts: List<Account>,
         amountToBuy: Double,
         selectedCurrency: String
-    ): List<RateDto> {
+    ): List<Rate> {
         val balanceMap = accounts.associate { it.code to it.amount.toDouble() }
 
         return rates.map { rate ->
@@ -165,8 +151,8 @@ class CurrencyViewModel @Inject constructor(
     }
 
     private fun calculateRatesWithoutFilter(
-        rates: List<RateDto>, amountToBuy: Double, selectedCurrency: String
-    ): List<RateDto> {
+        rates: List<Rate>, amountToBuy: Double, selectedCurrency: String
+    ): List<Rate> {
         return rates.map { rate ->
             if (rate.currency == selectedCurrency) rate.copy(value = amountToBuy)
             else rate.copy(value = amountToBuy * rate.value)

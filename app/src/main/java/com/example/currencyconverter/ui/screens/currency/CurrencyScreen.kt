@@ -1,4 +1,4 @@
-package com.example.currencyconverter.ui.screens
+package com.example.currencyconverter.ui.screens.currency
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,14 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.currencyconverter.ui.components.CurrencyItem
-import com.example.currencyconverter.ui.viewModel.CurrencyScreenMode
-import com.example.currencyconverter.ui.viewModel.CurrencyViewModel
 import com.example.currencyconverter.utils.formatTwoDecimalLocalized
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CurrencyScreen(
+internal fun CurrencyScreen(
     viewModel: CurrencyViewModel = hiltViewModel(),
     onNavigateToExchange: (fromCurrency: String, toCurrency: String, rate: Double, amount: Double) -> Unit,
     onNavigateToTransactions: () -> Unit,
@@ -48,6 +43,7 @@ fun CurrencyScreen(
                 val rate =
                     state.filteredRates.firstOrNull { it.currency == targetCurrency }?.value ?: 0.0
                 onNavigateToExchange(state.selectedCurrency, targetCurrency, rate, state.amount)
+                viewModel.onNavigationHandled()
             }
         }
     }

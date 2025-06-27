@@ -1,4 +1,4 @@
-package com.example.currencyconverter.ui.screens
+package com.example.currencyconverter.ui.screens.exchange
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
@@ -29,14 +29,12 @@ import com.example.currencyconverter.R
 import com.example.currencyconverter.data.mapper.CurrencyMapping
 import com.example.currencyconverter.data.mapper.CurrencyMapping.getCurrencyNameRes
 import com.example.currencyconverter.domain.entity.Currency.Companion.fromCode
-import com.example.currencyconverter.ui.components.CurrencyItem
-import com.example.currencyconverter.ui.viewModel.ExchangeError
-import com.example.currencyconverter.ui.viewModel.ExchangeViewModel
+import com.example.currencyconverter.ui.screens.currency.CurrencyItem
 import com.example.currencyconverter.utils.formatTwoDecimalLocalized
 
 
 @Composable
-fun ExchangeScreen(
+internal fun ExchangeScreen(
     viewModel: ExchangeViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
 ) {
@@ -56,7 +54,11 @@ fun ExchangeScreen(
     }
 
     LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) onNavigateBack()
+        if (uiState.isSuccess) {
+            onNavigateBack()
+            viewModel.clearSuccess()
+            viewModel.clearError()
+        }
     }
 
     Column(
@@ -93,18 +95,20 @@ fun ExchangeScreen(
 
         CurrencyItem(
             currencyCode = uiState.fromCurrency,
-            rate = "+${uiState.fromAmount.formatTwoDecimalLocalized()}",
+            rate = uiState.fromAmount.formatTwoDecimalLocalized(),
             amount = uiState.fromAmount.formatTwoDecimalLocalized(),
-            balance = "",
+            prefix = "+",
+            showBalance = false,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         CurrencyItem(
             currencyCode = uiState.toCurrency,
-            rate = "-${uiState.toAmount.formatTwoDecimalLocalized()}",
+            rate = uiState.toAmount.formatTwoDecimalLocalized(),
             amount = uiState.toAmount.formatTwoDecimalLocalized(),
             balance = uiState.balanceAfterExchange.formatTwoDecimalLocalized(),
+            prefix = "—",
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -136,7 +140,7 @@ fun ExchangeScreen(
 }
 
 @Composable
-fun getCurrencySymbol(currencyCode: String): String {
+private fun getCurrencySymbol(currencyCode: String): String {
     val currency = fromCode(currencyCode) ?: return ""
 
     val symbolResId = try {

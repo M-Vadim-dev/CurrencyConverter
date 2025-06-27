@@ -1,4 +1,4 @@
-package com.example.currencyconverter.ui.components
+package com.example.currencyconverter.ui.screens.currency
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,13 +39,15 @@ import com.example.currencyconverter.domain.entity.Currency
 import com.example.currencyconverter.ui.theme.CurrencyConverterTheme
 
 @Composable
-fun CurrencyItem(
+internal fun CurrencyItem(
     currencyCode: String,
     rate: String,
     isSelected: Boolean = false,
     isInputMode: Boolean = false,
     amount: String,
-    balance: String,
+    balance: String = "",
+    prefix: String = "",
+    showBalance: Boolean = true,
     onAmountChange: (String) -> Unit = {},
     onResetAmount: () -> Unit = {},
     onClick: () -> Unit = {},
@@ -68,7 +71,7 @@ fun CurrencyItem(
             )
         } else {
             Icon(
-                imageVector = Icons.Default.Close,
+                imageVector = Icons.Default.Warning,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp)
             )
@@ -110,7 +113,7 @@ fun CurrencyItem(
         ) {
             currency?.let {
                 Text(
-                    text = stringResource(getCurrencySymbolRes(it)),
+                    text = prefix + stringResource(getCurrencySymbolRes(it)),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )

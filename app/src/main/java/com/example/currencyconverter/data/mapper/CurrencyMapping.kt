@@ -153,17 +153,17 @@ object CurrencyMapping {
 
     @StringRes
     fun getCurrencyNameRes(currency: Currency): Int =
-        nameResMap[currency] ?: error("Name resource not found for $currency")
+        nameResMap[currency] ?: R.string.currency_unknown_name
 
     @StringRes
     fun getCurrencyCodeRes(currency: Currency): Int =
-        codeResMap[currency] ?: error("Code resource not found for $currency")
+        codeResMap[currency] ?: R.string.currency_unknown_code
 
     @StringRes
     fun getCurrencySymbolRes(currency: Currency): Int =
-        symbolResMap[currency] ?: error("Symbol resource not found for $currency")
+        symbolResMap[currency] ?: R.string.currency_unknown_symbol
 
     @DrawableRes
     fun getCurrencyIconRes(currency: Currency): Int =
-        iconResMap[currency] ?: error("Icon resource not found for $currency")
+        iconResMap[currency] ?: R.drawable.back_hand_black
 }

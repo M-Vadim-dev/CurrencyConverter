@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="currency_eur">Евро</string>
     <string name="currency_aud">Австралийский Доллар</string>
     <string name="currency_bgn">Болгарский Лев</string>
@@ -40,4 +40,13 @@
     <string name="no_transactions">Нет транзакций</string>
     <string name="error_invalid_amount_or_rate">Неверная сумма или курс</string>
     <string name="error_exchange_failed">Ошибка обмена</string>
+    <string name="currency_unknown_name">Неизвестная валюта</string>
+    <string name="currency_unknown_code">н/д</string>
+
+    <plurals name="currency_rub">
+        <item quantity="one" tools:ignore="ImpliedQuantity">Российский рубль</item>
+        <item quantity="few">Российских рубля</item>
+        <item quantity="many">Российских рублей</item>
+        <item quantity="other">Российских рублей</item>
+    </plurals>
 </resources>

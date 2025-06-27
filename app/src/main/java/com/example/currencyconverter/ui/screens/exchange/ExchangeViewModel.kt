@@ -1,11 +1,10 @@
-package com.example.currencyconverter.ui.viewModel
+package com.example.currencyconverter.ui.screens.exchange
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.currencyconverter.data.dataSource.room.account.dbo.AccountDbo
-import com.example.currencyconverter.data.repository.CurrencyRepository
+import com.example.currencyconverter.domain.repository.AccountRepository
+import com.example.currencyconverter.domain.useCase.SaveTransactionUseCase
 import com.example.currencyconverter.navigation.NavRoutes.Companion.AMOUNT_ARG
 import com.example.currencyconverter.navigation.NavRoutes.Companion.FROM_CURRENCY_ARG
 import com.example.currencyconverter.navigation.NavRoutes.Companion.RATE_ARG
@@ -21,28 +20,10 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import javax.inject.Inject
 
-enum class ExchangeError {
-    INVALID_AMOUNT_OR_RATE,
-    EXCHANGE_FAILED,
-}
-
-@Immutable
-data class ExchangeScreenState(
-    val fromCurrency: String = "USD",
-    val toCurrency: String = "",
-    val fromAmount: Double = 0.0,
-    val toAmount: Double = 0.0,
-    val balanceAfterExchange: Double = 0.0,
-    val exchangeRate: Double = 0.0,
-    val accounts: List<AccountDbo> = emptyList(),
-    val isLoading: Boolean = false,
-    val errorMessage: ExchangeError? = null,
-    val isSuccess: Boolean = false
-)
-
 @HiltViewModel
 class ExchangeViewModel @Inject constructor(
-    private val repository: CurrencyRepository,
+    private val accountRepository: AccountRepository,
+    private val saveTransactionUseCase: SaveTransactionUseCase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -67,7 +48,7 @@ class ExchangeViewModel @Inject constructor(
 
         viewModelScope.launch {
             combine(
-                repository.getAccountsFlow(),
+                accountRepository.getAccountsFlow(),
                 _uiState.map { it.fromAmount }
             ) { accounts, fromAmount ->
                 val fromBalance = accounts.find { it.code == toCurrency }?.amount ?: 0.0
@@ -83,16 +64,19 @@ class ExchangeViewModel @Inject constructor(
         }
     }
 
-    fun clearError() {
+    internal fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    fun performExchange() {
+    internal fun clearSuccess() {
+        _uiState.update { it.copy(isSuccess = false) }
+    }
+
+    internal fun performExchange() {
         val state = _uiState.value
 
         val error = when {
             state.exchangeRate <= 0.0 || state.fromCurrency == state.toCurrency -> ExchangeError.INVALID_AMOUNT_OR_RATE
-
             else -> null
         }
 
@@ -102,17 +86,28 @@ class ExchangeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            repository.saveTransaction(
-                fromCurrency = state.fromCurrency,
-                toCurrency = state.toCurrency,
-                fromAmount = state.fromAmount,
-                toAmount = state.toAmount,
-                dateTime = LocalDateTime.now(),
-            )
-
-            _uiState.update {
-                it.copy(isSuccess = true, isLoading = false, errorMessage = null)
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                saveTransactionUseCase.invoke(
+                    fromCurrency = state.fromCurrency,
+                    toCurrency = state.toCurrency,
+                    fromAmount = state.fromAmount,
+                    toAmount = state.toAmount,
+                    dateTime = LocalDateTime.now(),
+                )
+                _uiState.update {
+                    it.copy(isSuccess = true, isLoading = false, errorMessage = null)
+                }
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(
+                        errorMessage = ExchangeError.EXCHANGE_FAILED,
+                        isLoading = false,
+                        isSuccess = false
+                    )
+                }
             }
         }
     }
+
 }
